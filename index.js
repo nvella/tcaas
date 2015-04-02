@@ -59,6 +59,12 @@ io.on('connection', function(socket) {
       case 191:
         qemu.write("/");
         break;
+      case 190:
+        qemu.write('.');
+        break;
+      case 189:
+        qemu.write('-');
+        break;
       default:
         qemu.write(String.fromCharCode(data).toLowerCase());
     }
