@@ -14,23 +14,29 @@ io.on('connection', function(socket) {
     console.log('user disconnected');
   });
 
-  var qemu = pty.spawn('qemu-system-i386',
-    ['-curses',
-     '-kernel', 'vmlinuz',
-     '-initrd', 'core.gz',
-     '--append', 'superuser quiet',
-     '-m', '48'],
-    {
-      name: 'vt100',
-      cols: 80,
-      rows: 25,
-      cwd: process.env.PWD,
-      env: process.env
+  var qemu = (function setupQEMU() {
+    var q = pty.spawn('qemu-system-i386',
+      ['-curses',
+       '-kernel', 'vmlinuz',
+       '-initrd', 'core.gz',
+       '--append', 'superuser quiet',
+       '-m', '48'],
+      {
+        name: 'vt100',
+        cols: 80,
+        rows: 25,
+        cwd: process.env.PWD,
+        env: process.env
+      });
+
+    q.on('data', function(data) {
+      socket.emit('stdout', data);
     });
 
-  qemu.on('data', function(data) {
-    socket.emit('stdout', data);
-  });
+    q.on('exit', function() { qemu = setupQEMU(); });
+
+    return q;
+  })();
 
   socket.on('stdin', function(data) {
     if(typeof(data) != 'number') return;
