@@ -1,5 +1,5 @@
 {
-  "name": "dos_as_a_service",
+  "name": "tcaas",
   "version": "0.0.1",
   "dependencies": {
     "express": "^4.12.3",
