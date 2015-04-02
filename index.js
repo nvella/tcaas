@@ -10,7 +10,7 @@ io.on('connection', function(socket) {
   console.log('user connected');
 
   socket.on('disconnect', function() {
-    qemu.kill();
+    if(qemu) qemu.kill();
     console.log('user disconnected');
   });
 
