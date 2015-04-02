@@ -54,7 +54,7 @@ io.on('connection', function(socket) {
         qemu.write("/");
         break;
       default:
-        qemu.write(String.fromCharCode(data));
+        qemu.write(String.fromCharCode(data).toLowerCase());
     }
   });
 });
