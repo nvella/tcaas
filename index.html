@@ -49,8 +49,6 @@
 
       socket = io();
       socket.on('stdout', function(data) {
-        console.log(data.hexEncode());
-
         for(var i = 0; i < data.length; i++) {
           // Process each character of this chunk
           switch(data[i]) {
