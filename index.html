@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>DOS as a Service</title>
+    <style>
+      body {font-family: sans-serif;}
+      .content {width: 800px; display: block; margin-left: auto; margin-right: auto;}
+      .term {font-family: monospace; font-size: 11pt;}
+      .termLine {display: block; height: 16px; background-color: #000; color: #888;}
+      /* .termChar {margin: 0; padding: 0; height: 100%; float: left; background-color: #000; color: #888; display: inline-block;} */
+    </style>
+    <script src="https://cdn.socket.io/socket.io-1.3.5.js"></script>
+    <script>
+    String.prototype.hexEncode = function(){
+    var hex, i;
+
+    var result = "";
+    for (i=0; i<this.length; i++) {
+        hex = this.charCodeAt(i).toString(16);
+        result += ("0"+hex).slice(-2) + ' ';
+    }
+
+    return result;
+  };
+
+      var buffer = [];
+      var width = 80;
+      var height = 25;
+      var needsRedraw = true;
+      var cur = {
+        x: 0,
+        y: 0
+      };
+
+      for(var y = 0; y < height; y++) {
+        buffer[y] = [];
+        for(var x = 0; x < width; x++) {
+          buffer[y][x] = ' ';
+        }
+      }
+
+      function redraw() {
+        document.getElementById('term').innerHTML = '';
+        for(var y = 0; y < height; y++) {
+          document.getElementById('term').innerHTML += '<div class="termLine"></div>';
+          var line = document.getElementsByClassName('termLine')[y];
+          for(var x = 0; x < width; x++) {
+            switch(buffer[y][x]) {
+              case ' ':
+                line.innerHTML += "&nbsp;";
+                break;
+              default:
+                line.innerHTML += buffer[y][x];
+            }
+
+            //var char = line.getElementsByClassName('termChar')[x];
+            //char.style.color = buffer[y][x].fgColor;
+          }
+        }
+      }
+
+      socket = io();
+      socket.on('stdout', function(data) {
+        console.log(data.hexEncode());
+
+        for(var i = 0; i < data.length; i++) {
+          // Process each character of this chunk
+          switch(data[i]) {
+            case String.fromCharCode(27): // Escape character
+              i += 2; // Skip to first byte of data in escape sequence
+              // Capture the whole escape sequence to decode.
+              var begin = i;
+              while(data.charCodeAt(i) < 65) i++;
+
+              console.log("escape code " + data[i]);
+              switch(data[i]) {
+                case 'H': // Set cursor absolute position
+                  if(begin >= i) {
+                    cur.x = 0;
+                    cur.y = 0;
+                  } else {
+                    var posData = data.substring(begin, i).split(';');
+                    cur.x = parseInt(posData[1]) - 1;
+                    cur.y = parseInt(posData[0]) - 1;
+                    break;
+                  }
+                case 'B': // Move cursor down
+                  if(begin >= i) break;
+                  cur.y = cur.y + parseInt(data.substring(begin, i));
+                  if(cur.y >= height) cur.y = height - 1;
+                  break;
+                case 'A': // Move cursor up
+                  if(begin >= i) break;
+                  cur.y = cur.y - parseInt(data.substring(begin, i));
+                  if(cur.y < 0) cur.y = 0;
+                  break;
+                case 'C': // Move cursor right
+                  if(begin >= i) break;
+                  cur.x = cur.x + parseInt(data.substring(begin, i));
+                  if(cur.x >= width) cur.x = width - 1;
+                  break;
+                case 'J': // Clear display
+                  if(begin == i) { // Clear to end of display
+                    for(var x = cur.x; x < width; x++) buffer[cur.y][x] = ' '; // Clear current line
+                    for(var y = cur.y; y < height; y++) { // clear other lines
+                      for(x = 0; x < width; x++) buffer[y][x] = ' ';
+                    }
+                  } // clear rest of line
+                  break;
+                case 'K': // Clear line
+                  if(begin == i) { // Clear to end of line
+                    for(var x = cur.x; x < width; x++) buffer[cur.y][x] = ' '; // Clear current line
+                  } // clear rest of line
+                  break;
+                case 'm':
+
+                  break; // color not supported
+                default:
+                  //alert("Unknown escape code: (" + data[i] + ")" + data.substring(begin, i));
+              }
+
+              break;
+            case '\r': // carriage return
+              console.log('cr');
+              cur.x = 0;
+              break;
+            case '\b':
+              cur.x--;
+              if(cur.x < 0) cur.x = 0;
+              break;
+            case '\t':
+              cur.x = (Math.floor(cur.x / 8) + 1) * 8;
+              if(cur.x >= width) {
+                cur.x = 0;
+                cur.y += 1;
+                if(cur.y > height) cur.y = 0;
+              }
+              break;
+            case '\n':
+              console.log('newline');
+              cur.y = cur.y + 1;
+              cur.x = 0;
+
+              if(cur.y >= height) { // Shift whole buffer up.
+                for(var y = 0; y < height - 1; y++) buffer[y] = buffer[y + 1];
+                buffer[height - 1] = [];
+                for(var x = 0; x < width; x++) buffer[height - 1][x] = ' ';
+                cur.y = height - 1;
+              }
+
+              break;
+            default:
+              if(data[i].charCodeAt(0) < 20) break; // don't put invisible characters in the buffer.
+              buffer[cur.y][cur.x] = data[i];
+              //if(cur.x + 1 >= width) cur.y = (cur.y + 1) % height;
+              cur.x = cur.x + 1;
+              if(cur.x >= width) cur.x = width - 1;
+          }
+        }
+
+        redraw();
+      });
+
+      document.onkeydown = function(event) {
+        socket.emit('stdin', event.keyCode);
+      }
+    </script>
+  </head>
+  <body>
+    <div class="content">
+      <h1>DOS as a Service</h1>
+      <p>webscale</p>
+      <div class="term" id="term">
+        <div class="termLine">
+          <div class="termChar">p</div>
+          <div class="termChar">l</div>
+          <div class="termChar">s</div>
+        </div>
+        <div class="termLine">
+          <div class="termChar">w</div>
+          <div class="termChar">a</div>
+          <div class="termChar">i</div>
+          <div class="termChar">t</div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
