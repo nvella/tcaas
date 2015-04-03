@@ -76,7 +76,11 @@ io.on('connection', function(socket) {
         }
         break;
       default:
-        qemu.write(String.fromCharCode(data.keyCode).toLowerCase());
+        if(data.shiftKey) {
+          qemu.write(String.fromCharCode(data.keyCode));
+        } else {
+          qemu.write(String.fromCharCode(data.keyCode).toLowerCase());
+        }
     }
   });
 });
