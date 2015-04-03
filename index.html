@@ -20,6 +20,7 @@
         x: 0,
         y: 0
       };
+      var shiftPressed = false;
 
       for(var y = 0; y < height; y++) {
         buffer[y] = [];
@@ -152,7 +153,14 @@
       });
 
       document.onkeydown = function(event) {
-        socket.emit('stdin', event.keyCode);
+        shiftPressed = event.shiftKey;
+        if(event.keyCode == 16) return; // Shift key
+        console.log(shiftPressed);
+        socket.emit('stdin', { keyCode: event.keyCode, shiftKey: shiftPressed });
+      }
+
+      document.onkeyup = function(event) {
+        shiftPressed = event.shiftKey;
       }
     </script>
   </head>

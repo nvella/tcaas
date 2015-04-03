@@ -20,7 +20,8 @@ io.on('connection', function(socket) {
        '-kernel', 'vmlinuz',
        '-initrd', 'core.gz',
        '--append', 'superuser quiet',
-       '-m', '48'],
+       '-m', '48',
+       '-net', 'none'],
       {
         name: 'vt100',
         cols: 80,
@@ -39,8 +40,10 @@ io.on('connection', function(socket) {
   })();
 
   socket.on('stdin', function(data) {
-    if(typeof(data) != 'number') return;
-    switch(data) {
+    if(typeof(data) != 'object') return;
+    if(typeof(data.keyCode) != 'number') return;
+
+    switch(data.keyCode) {
       case 37:
         qemu.write(String.fromCharCode(27) + "[D");
         break;
@@ -53,20 +56,27 @@ io.on('connection', function(socket) {
       case 40:
         qemu.write(String.fromCharCode(27) + "[B");
         break;
-      case 220:
+      case 220: // Backslash
         qemu.write("\\");
         break;
-      case 191:
+      case 191: // Forward slash
         qemu.write("/");
         break;
-      case 190:
+      case 190: // Period
         qemu.write('.');
         break;
-      case 189:
+      case 189: // Dash
         qemu.write('-');
         break;
+      case 186: // (semi) colon
+        if(data.shiftKey) {
+          qemu.write(':');
+        } else {
+          qemu.write(';');
+        }
+        break;
       default:
-        qemu.write(String.fromCharCode(data).toLowerCase());
+        qemu.write(String.fromCharCode(data.keyCode).toLowerCase());
     }
   });
 });
