@@ -7,9 +7,12 @@ var pty = require('pty.js');
 app.get('/', function(req, res) { res.sendFile(__dirname + "/index.html"); });
 
 io.on('connection', function(socket) {
+  var connected = true;
+
   console.log('user connected');
 
   socket.on('disconnect', function() {
+    connected = false;
     if(qemu) qemu.kill();
     console.log('user disconnected');
   });
@@ -34,7 +37,10 @@ io.on('connection', function(socket) {
       socket.emit('stdout', data);
     });
 
-    q.on('exit', function() { qemu = setupQEMU(); });
+    q.on('exit', function() {
+      if(!connected) return; // Don't respawn qemu if client has disconnected.
+      qemu = setupQEMU();
+    });
 
     return q;
   })();
