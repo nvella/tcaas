@@ -62,8 +62,12 @@ io.on('connection', function(socket) {
       case 191: // Forward slash
         qemu.write("/");
         break;
-      case 190: // Period
-        qemu.write('.');
+      case 190: // Period / right angle bracket
+        if(data.shiftKey) {
+          qemu.write('>');
+        } else {
+          qemu.write('.');
+        }
         break;
       case 189: // Dash
         qemu.write('-');
